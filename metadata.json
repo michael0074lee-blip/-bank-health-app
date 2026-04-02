@@ -1,0 +1,5 @@
+{
+  "name": "银行康小智 - 智慧工会健康助手",
+  "description": "专为银行工会打造的数字化健康管理平台，提供AI心理评估、随身医生、慢病干预及健康数据资产化管理。",
+  "requestFramePermissions": ["microphone"]
+}
