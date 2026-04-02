@@ -13,7 +13,11 @@ import {
   Calendar,
   AlertCircle,
   TrendingUp,
-  Award
+  Award,
+  MessageSquare,
+  Send,
+  X,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -31,6 +35,10 @@ import {
   Cell
 } from 'recharts';
 import { cn } from './lib/utils';
+import { GoogleGenAI } from "@google/genai";
+
+// --- Gemini Initialization ---
+const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 // --- Mock Data ---
 const healthData = [
@@ -49,6 +57,145 @@ const riskDistribution = [
 ];
 
 // --- Components ---
+
+const ChatModal = ({ isOpen, onClose }: any) => {
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([
+    { role: 'ai', text: '您好！我是您的健康助手康小智。您可以问我关于您的健康分、血压或如何缓解工作压力的问题。' }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMsg = input;
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsLoading(true);
+
+    try {
+      const response = await genAI.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: userMsg,
+        config: {
+          systemInstruction: `你是"银行康小智"应用的AI健康助手。
+          当前用户健康数据：
+          - 健康分：92 (优秀)
+          - 心率：72 bpm
+          - 血压：118/76 mmHg (正常)
+          - 心理状态：良好
+          - 趋势：较上月提升2.4%
+          
+          你的目标是：
+          1. 以专业、亲切、符合银行员工语境的方式回答健康问题。
+          2. 如果用户问到具体数据，请基于上述数据回答。
+          3. 鼓励用户参加工会的健康干预项目，如"超能宝"或"稳赢120/80"。
+          4. 保持回答简洁有力，适合手机端阅读。`
+        }
+      });
+
+      const aiText = response.text || "抱歉，我现在无法回答这个问题，请稍后再试。";
+      setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
+    } catch (error) {
+      console.error("Gemini Error:", error);
+      setMessages(prev => [...prev, { role: 'ai', text: "连接助手失败，请检查网络设置。" }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
+          />
+          <motion.div 
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="bg-white w-full max-w-md h-[85vh] sm:h-[600px] rounded-t-[32px] sm:rounded-[32px] overflow-hidden shadow-2xl relative z-10 flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-blue-600 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                  <Brain size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold">康小智 AI 助手</h3>
+                  <p className="text-[10px] opacity-70">实时健康咨询与数据分析</p>
+                </div>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Messages */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
+              {messages.map((msg, i) => (
+                <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+                  <div className={cn(
+                    "max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
+                    msg.role === 'user' 
+                      ? "bg-blue-600 text-white rounded-tr-none" 
+                      : "bg-white text-slate-800 rounded-tl-none border border-slate-100"
+                  )}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex items-center gap-2">
+                    <Loader2 className="animate-spin text-blue-600" size={16} />
+                    <span className="text-xs text-slate-400">正在思考中...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="p-4 bg-white border-t border-slate-100">
+              <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:border-blue-400 transition-colors">
+                <input 
+                  type="text" 
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="问问您的健康数据或建议..."
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-sm px-2 text-slate-800 outline-none"
+                />
+                <button 
+                  onClick={handleSend}
+                  disabled={isLoading || !input.trim()}
+                  className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center disabled:opacity-50 transition-opacity shadow-md shadow-blue-100"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+              <p className="text-[10px] text-center text-slate-400 mt-3">AI 建议仅供参考，不作为医疗诊断依据</p>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};
 
 const Header = () => (
   <header className="bg-white border-b border-slate-100 px-6 py-4 sticky top-0 z-50 flex items-center justify-between">
@@ -331,6 +478,7 @@ const ServiceView = () => (
 
 export default function App() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
 
   return (
@@ -385,10 +533,11 @@ export default function App() {
                 onClick={() => setIsAIModalOpen(true)}
               />
               <QuickAction 
-                icon={Video} 
-                label="视频医生" 
-                sublabel="7x24在线" 
-                color="bg-blue-500" 
+                icon={MessageSquare} 
+                label="健康咨询" 
+                sublabel="AI问答" 
+                color="bg-indigo-500" 
+                onClick={() => setIsChatOpen(true)}
               />
               <QuickAction 
                 icon={Calendar} 
@@ -455,7 +604,6 @@ export default function App() {
       </main>
 
 
-      {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-100 px-8 py-3 flex justify-between items-center z-50">
         <button onClick={() => setActiveTab('home')} className={cn("flex flex-col items-center gap-1", activeTab === 'home' ? "text-blue-600" : "text-slate-400")}>
           <Heart size={20} fill={activeTab === 'home' ? "currentColor" : "none"} />
@@ -467,10 +615,10 @@ export default function App() {
         </button>
         <div className="relative -mt-12">
           <button 
-            onClick={() => setIsAIModalOpen(true)}
+            onClick={() => setIsChatOpen(true)}
             className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-200 border-4 border-white"
           >
-            <Brain size={24} />
+            <MessageSquare size={24} />
           </button>
         </div>
         <button onClick={() => setActiveTab('report')} className={cn("flex flex-col items-center gap-1", activeTab === 'report' ? "text-blue-600" : "text-slate-400")}>
@@ -484,6 +632,7 @@ export default function App() {
       </nav>
 
       <AIMentalModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} />
+      <ChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
 }
