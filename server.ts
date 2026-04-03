@@ -1,10 +1,14 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import path from "path";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import fs from "fs";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 let genAI: GoogleGenAI | null = null;
 
@@ -27,26 +31,28 @@ async function startServer() {
 
   // API Route for Chat
   app.post("/api/chat", async (req, res) => {
-    const { message, history } = req.body;
+    const { message, version } = req.body;
+    const isVip = version === 'vip';
+    
     try {
       const ai = getGenAI();
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: message,
         config: {
-          systemInstruction: `你是"银行康小智"应用的AI健康助手。
-          当前用户健康数据：
-          - 健康分：92 (优秀)
-          - 心率：72 bpm
-          - 血压：118/76 mmHg (正常)
-          - 心理状态：良好
-          - 趋势：较上月提升2.4%
-          
-          你的目标是：
-          1. 以专业、亲切、符合银行员工语境的方式回答健康问题。
-          2. 如果用户问到具体数据，请基于上述数据回答。
-          3. 鼓励用户参加工会的健康干预项目，如"超能宝"或"稳赢120/80"。
-          4. 保持回答简洁有力，适合手机端阅读。`
+          systemInstruction: isVip 
+            ? `你是"银行私享健康"VIP版的专属健康管家。你的服务对象是银行的高端VIP客户（高净值人群）。
+               你的目标是：
+               1. 语气必须极其专业、优雅、谦逊且富有同理心。称呼用户为"尊敬的客户"或"您"。
+               2. 强调"私享"、"定制"、"全球资源"和"长寿管理"的概念。
+               3. 当用户询问健康问题时，除了专业建议，还要引导其联系"全球医疗绿通"或"私人医生"进行深度咨询。
+               4. 保持回答简洁、精准，体现效率。`
+            : `你是"银行康小智"，银行工会的智慧健康管家。你的服务对象是银行的普通员工。
+               你的目标是：
+               1. 语气亲切、专业、充满活力。称呼用户为"伙伴"或"您"。
+               2. 关注员工的职业健康、压力缓解和工会福利。
+               3. 提供实用的健康建议，如工位拉伸、护眼知识等。
+               4. 保持回答简洁、温暖。`
         }
       });
       res.json({ text: response.text });
@@ -82,17 +88,24 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    const distPath = path.join(__dirname, "dist");
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    } else {
+      app.get("*", (req, res) => {
+        res.status(500).send("Build artifacts not found. Please run 'npm run build' first.");
+      });
+    }
   }
 
   app.listen(PORT, "0.0.0.0", () => {

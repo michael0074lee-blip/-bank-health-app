@@ -1,5 +1,5 @@
 {
-  "name": "银行康小智 - 智慧工会健康助手",
-  "description": "专为银行工会打造的数字化健康管理平台，提供AI心理评估、随身医生、慢病干预及健康数据资产化管理。",
-  "requestFramePermissions": ["microphone"]
+  "name": "银行私享健康 · VIP版",
+  "description": "专为银行高端VIP客户打造的私享健康管理平台，提供全球医疗绿通、长寿管理及24小时私人医生服务。",
+  "requestFramePermissions": ["microphone", "camera", "geolocation"]
 }
