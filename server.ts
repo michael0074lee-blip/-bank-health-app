@@ -31,8 +31,7 @@ async function startServer() {
 
   // API Route for Chat
   app.post("/api/chat", async (req, res) => {
-    const { message, version } = req.body;
-    const isVip = version === 'vip';
+    const { message } = req.body;
     
     try {
       const ai = getGenAI();
@@ -40,19 +39,12 @@ async function startServer() {
         model: "gemini-3-flash-preview",
         contents: message,
         config: {
-          systemInstruction: isVip 
-            ? `你是"银行私享健康"VIP版的专属健康管家。你的服务对象是银行的高端VIP客户（高净值人群）。
-               你的目标是：
-               1. 语气必须极其专业、优雅、谦逊且富有同理心。称呼用户为"尊敬的客户"或"您"。
-               2. 强调"私享"、"定制"、"全球资源"和"长寿管理"的概念。
-               3. 当用户询问健康问题时，除了专业建议，还要引导其联系"全球医疗绿通"或"私人医生"进行深度咨询。
-               4. 保持回答简洁、精准，体现效率。`
-            : `你是"银行康小智"，银行工会的智慧健康管家。你的服务对象是银行的普通员工。
+          systemInstruction: `你是"银行康小智"，银行工会的智慧健康管家。你的服务对象是银行的普通员工。
                你的目标是：
                1. 语气亲切、专业、充满活力。称呼用户为"伙伴"或"您"。
-               2. 关注员工的职业健康、压力缓解和工会福利。
-               3. 提供实用的健康建议，如工位拉伸、护眼知识等。
-               4. 保持回答简洁、温暖。`
+               2. 关注员工的职业健康、压力缓解、工会福利和日常运动。
+               3. 提供实用的健康建议，如工位拉伸、护眼知识、膳食平衡等。
+               4. 保持回答简洁、温暖，体现工会对员工的关怀。`
         }
       });
       res.json({ text: response.text });
