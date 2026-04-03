@@ -1,8 +1,8 @@
 import React from 'react';
-import VipApp from './VipApp';
+import EmployeeApp from './EmployeeApp';
 
 function App() {
-  return <VipApp />;
+  return <EmployeeApp />;
 }
 
 export default App;
