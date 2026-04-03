@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from './lib/utils';
 
+import { GoogleGenAI } from "@google/genai";
+
 // --- Types ---
 interface Message {
   id: string;
@@ -65,16 +67,31 @@ const ChatBot = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
     setLoading(true);
 
     try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: input })
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: input,
+        config: {
+          systemInstruction: "你是一个名为'康小智'的银行员工健康管家。你的语气亲切、专业、充满关怀。你了解银行员工工作压力大、久坐、用眼过度等职业特点。你的目标是提供健康建议、心理疏导和工会关怀信息。如果用户提到身体极度不适，请提醒其及时就医。回复请保持简洁，控制在150字以内。",
+        }
       });
-      const data = await res.json();
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), text: data.text, sender: 'ai', timestamp: new Date() };
+      
+      const aiMsg: Message = { 
+        id: (Date.now() + 1).toString(), 
+        text: response.text || '抱歉，我现在有点累了，请稍后再试。', 
+        sender: 'ai', 
+        timestamp: new Date() 
+      };
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
       console.error(err);
+      const errorMsg: Message = { 
+        id: (Date.now() + 1).toString(), 
+        text: '连接康小智失败，请检查网络或联系管理员。', 
+        sender: 'ai', 
+        timestamp: new Date() 
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
