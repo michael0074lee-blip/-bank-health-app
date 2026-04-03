@@ -1,5 +1,5 @@
 {
-  "name": "银行私享健康 · VIP版",
-  "description": "专为银行高端VIP客户打造的私享健康管理平台，提供全球医疗绿通、长寿管理及24小时私人医生服务。",
+  "name": "银行康小智 · 员工健康管家",
+  "description": "由工会倾力打造的员工智慧健康平台。提供AI健康咨询、压力评估、工位拉伸指导及工会福利资讯，全方位守护伙伴们的职业健康。",
   "requestFramePermissions": ["microphone", "camera", "geolocation"]
 }
